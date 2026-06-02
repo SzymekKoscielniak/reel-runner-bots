@@ -240,7 +240,7 @@ function arena(a,b,label,submitFn){
   const p=el("div",{class:"panel"});
   p.append(el("div",{style:"text-align:center;font-weight:600;margin-bottom:14px"},label));
   const ar=el("div",{class:"arena"});
-  ar.append(fighterEl(a,120,slider>50)); ar.append(el("div",{class:"vs"},"VS")); ar.append(fighterEl(b,120,slider<50));
+  ar.append(fighterEl(a,360,slider>50)); ar.append(el("div",{class:"vs"},"VS")); ar.append(fighterEl(b,360,slider<50));
   p.append(ar);
   p.append(el("input",{type:"range",min:0,max:100,value:slider,oninput:e=>{slider=+e.target.value;updateLive();}}));
   p.append(el("div",{style:"display:flex;justify-content:space-between;font-size:13px;margin-top:6px;font-weight:600"},
