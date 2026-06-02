@@ -12,11 +12,12 @@
           z losowymi przeciwnikami (~60 meczów). Tabele na żywo.
        3. FAZA 3 — Playoffy: top 32 globalnie, drabinka do finału.
 
-     ZMIANA W v7: panel areny poszerzony (820→1100px), obrazki w
-     arenie 360px, dodany maxWidth na canvasie. (v6: 3 mecze/bota.)
+     ZMIANA W v8: przycisk "Start turnieju" przyklejony na dole ekranu
+     (zawsze widoczny, nie ucieka pod duży podgląd siatki). Enter też
+     startuje turniej z ekranu kalibracji. (v7: większe obrazki.)
 
-     >>> Na ekranie startowym i w stopce widać "v7". Jeśli NIE widzisz
-         "v7" w przeglądarce, to STARY plik na Pages — nadpisz index.html.
+     >>> Na ekranie startowym i w stopce widać "v8". Jeśli NIE widzisz
+         "v8" w przeglądarce, to STARY plik na Pages — nadpisz index.html.
 
      UWAGA: podgląd w Claude pokaże błąd/pustkę — to normalne.
      =========================================================== -->
@@ -71,7 +72,7 @@ const GROUP_COUNT = 4;          // 4 grupy
 const GROUP_SIZE = 10;          // po 10 = 40
 const MATCHES_PER_BOT = 3;      // mecze na bota w grupie
 const ADVANCE = 32;             // finałowa 32
-const VERSION = "v7";
+const VERSION = "v8";
 
 const app = document.getElementById("app");
 let img=null, cellW=0, cellH=0;
@@ -208,7 +209,9 @@ const roundName=n=>n===16?"1/16":n===8?"1/8":n===4?"Ćwierćfinał":n===2?"Pół
 
 // ===== KLAWIATURA =====
 document.addEventListener("keydown",e=>{
-  if(phase==="reduction"){
+  if(phase==="calibrate"){
+    if(e.key==="Enter"){ initReduction(); phase="reduction"; render(); }
+  } else if(phase==="reduction"){
     if(e.key==="1"){slider=0;render();} else if(e.key==="2"){slider=100;render();} else if(e.key==="Enter") submitReduction();
   } else if(phase==="group"){
     if(e.key==="1"){slider=0;render();} else if(e.key==="2"){slider=100;render();} else if(e.key==="Enter") submitGroup();
@@ -297,14 +300,18 @@ function render(){
   if(phase==="calibrate"){
     app.append(el("h1",{},"Kalibracja siatki"));
     app.append(el("p",{class:"sub"},"Sprawdź, czy różowa siatka trafia w każdego bota, potem Start. ("+VERSION+", przepływ: redukcja → grupy → playoffy)"));
-    const p=el("div",{class:"panel"}); const ctrls=el("div",{class:"ctrls"});
+    const p=el("div",{class:"panel",style:"padding-bottom:90px"}); const ctrls=el("div",{class:"ctrls"});
     const mk=(lab,val,min,max,set)=>{ const l=el("label",{class:"ctrl"},`${lab}: ${val}`);
       l.append(el("input",{type:"range",min,max,value:val,oninput:e=>{set(+e.target.value);recalcCells();drawCal();l.firstChild.textContent=`${lab}: ${e.target.value}`;}})); return l; };
     ctrls.append(mk("Kolumny",COLS,1,16,v=>COLS=v),mk("Wiersze",ROWS,1,16,v=>ROWS=v),mk("Odstęp",GAP,0,60,v=>GAP=v),mk("Margines",PAD,0,60,v=>PAD=v));
     p.append(ctrls); p.append(el("div",{id:"caldim",style:"font-size:13px;font-weight:600;margin-bottom:10px"}));
     p.append(el("canvas",{id:"cal"}));
-    p.append(el("button",{class:"btn sky",onClick:()=>{ initReduction(); phase="reduction"; render(); }},"Siatka OK — Start turnieju →"));
-    app.append(p); drawCal(); return;
+    app.append(p);
+    // przyklejony pasek startu — zawsze widoczny na dole ekranu
+    const bar=el("div",{style:"position:fixed;left:0;right:0;bottom:0;background:rgba(232,245,226,.96);padding:12px 16px;box-shadow:0 -4px 16px rgba(0,0,0,.12);z-index:50;display:flex;justify-content:center"});
+    const startBtn=el("button",{class:"btn sky",style:"max-width:520px;margin:0",onClick:()=>{ initReduction(); phase="reduction"; render(); }},"Siatka OK — Start turnieju →");
+    bar.append(startBtn); app.append(bar);
+    drawCal(); return;
   }
 
   if(phase==="reduction"){
