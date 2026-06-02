@@ -2,8 +2,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Turniej Botów</title>
 <!-- ===========================================================
-     index.html — gotowy do wrzucenia do repo reel-runner-bots
-     obok pliku Boty.png, otwierany przez GitHub Pages.
+     ✅ WERSJA 3 — STRUKTURA 88 → 40 → 32
+     index.html dla repo reel-runner-bots (obok Boty.png), GitHub Pages.
+
+     CO ZMIENIONE W TEJ WERSJI:
+       • FAZA 1 — Redukcja 88 → 40: losowe pary (44 pojedynki),
+         odpada 4 zwycięzców z najsłabszym marginesem wygranej.
+       • FAZA 2 — Grupy: 4 grupy po 10, każdy bot gra 4 mecze
+         z LOSOWO dobranymi przeciwnikami (nie każdy z każdym),
+         pary różne, bez powtórek. ~80 meczów. Tabele grup na żywo.
+       • FAZA 3 — Playoffy: top 32 globalnie wg punktów, losowanie
+         z rozstawieniem 1 vs 32, drabinka live do finału.
+       • Sterowanie klawiaturą 1 / 2 / Enter we wszystkich fazach.
+       • Naprawiona składnia (Unexpected token) — funkcja el() bez
+         domyślnego parametru przed rest-argumentem.
+
+     UWAGA: podgląd w Claude pokaże błąd/pustkę — to normalne,
+     plik HTML działa dopiero na GitHub Pages (Boty.png z tej samej domeny).
      =========================================================== -->
 <style>
   :root{
