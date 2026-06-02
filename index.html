@@ -2,18 +2,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Turniej Botów</title>
 <!-- ===========================================================
-     ✅ WERSJA 4 — STRUKTURA 88 → 40 → 32 (znacznik wersji na ekranie)
+     ✅ WERSJA 6 — STRUKTURA 88 → 40 → 32 (3 mecze na bota w grupie)
      index.html dla repo reel-runner-bots (obok Boty.png), GitHub Pages.
 
      PRZEPŁYW (w tej kolejności, BEZ każdy-z-każdym 440 meczów):
        1. FAZA 1 — Redukcja 88 → 40: losowe pary (44 pojedynki),
           odpada 4 zwycięzców z najsłabszym marginesem.
-       2. FAZA 2 — Grupy: 4 grupy po 10, każdy bot gra 4 mecze
-          z losowymi przeciwnikami (~80 meczów). Tabele na żywo.
+       2. FAZA 2 — Grupy: 4 grupy po 10, każdy bot gra 3 mecze
+          z losowymi przeciwnikami (~60 meczów). Tabele na żywo.
        3. FAZA 3 — Playoffy: top 32 globalnie, drabinka do finału.
 
-     >>> Na ekranie startowym i w stopce widać "v4". Jeśli NIE widzisz
-         "v4" w przeglądarce, to znaczy że na Pages leży STARY plik —
+     ZMIANA W v6: liczba meczów na bota w grupie 4 → 3 (~60 meczów).
+     (v5: obrazki w arenie powiększone 3×.)
+
+     >>> Na ekranie startowym i w stopce widać "v6". Jeśli NIE widzisz
+         "v6" w przeglądarce, to znaczy że na Pages leży STARY plik —
          trzeba nadpisać index.html tą zawartością i odczekać na rebuild.
 
      UWAGA: podgląd w Claude pokaże błąd/pustkę — to normalne.
@@ -67,9 +70,9 @@ const TOTAL = COLS*ROWS;        // 88
 const AFTER_REDUCTION = 40;     // ilu zostaje po fazie 1
 const GROUP_COUNT = 4;          // 4 grupy
 const GROUP_SIZE = 10;          // po 10 = 40
-const MATCHES_PER_BOT = 4;      // mecze na bota w grupie
+const MATCHES_PER_BOT = 3;      // mecze na bota w grupie
 const ADVANCE = 32;             // finałowa 32
-const VERSION = "v4";
+const VERSION = "v6";
 
 const app = document.getElementById("app");
 let img=null, cellW=0, cellH=0;
@@ -230,7 +233,7 @@ function el(tag,props,...kids){
 }
 function fighterEl(char,size,dim){
   const w=el("div",{class:"fighter"+(dim?" dim":"")});
-  w.append(makeBotCanvas(char.id,size)); w.append(el("div",{class:"name"},char.name)); return w;
+  w.append(makeBotCanvas(char.id,size*3)); w.append(el("div",{class:"name"},char.name)); return w;
 }
 function pill(char,o={}){
   const p=el("div",{class:"pill",style:`${o.cur?"background:var(--light);border:2px solid var(--primary);":""}${o.loser?"opacity:.4;":""}${o.winner?"font-weight:800;":""}`});
@@ -240,7 +243,7 @@ function arena(a,b,label,submitFn){
   const p=el("div",{class:"panel"});
   p.append(el("div",{style:"text-align:center;font-weight:600;margin-bottom:14px"},label));
   const ar=el("div",{class:"arena"});
-  ar.append(fighterEl(a,360,slider>50)); ar.append(el("div",{class:"vs"},"VS")); ar.append(fighterEl(b,360,slider<50));
+  ar.append(fighterEl(a,120,slider>50)); ar.append(el("div",{class:"vs"},"VS")); ar.append(fighterEl(b,120,slider<50));
   p.append(ar);
   p.append(el("input",{type:"range",min:0,max:100,value:slider,oninput:e=>{slider=+e.target.value;updateLive();}}));
   p.append(el("div",{style:"display:flex;justify-content:space-between;font-size:13px;margin-top:6px;font-weight:600"},
