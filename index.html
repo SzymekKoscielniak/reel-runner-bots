@@ -2,24 +2,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Turniej Botów</title>
 <!-- ===========================================================
-     ✅ WERSJA 3 — STRUKTURA 88 → 40 → 32
+     ✅ WERSJA 4 — STRUKTURA 88 → 40 → 32 (znacznik wersji na ekranie)
      index.html dla repo reel-runner-bots (obok Boty.png), GitHub Pages.
 
-     CO ZMIENIONE W TEJ WERSJI:
-       • FAZA 1 — Redukcja 88 → 40: losowe pary (44 pojedynki),
-         odpada 4 zwycięzców z najsłabszym marginesem wygranej.
-       • FAZA 2 — Grupy: 4 grupy po 10, każdy bot gra 4 mecze
-         z LOSOWO dobranymi przeciwnikami (nie każdy z każdym),
-         pary różne, bez powtórek. ~80 meczów. Tabele grup na żywo.
-       • FAZA 3 — Playoffy: top 32 globalnie wg punktów, losowanie
-         z rozstawieniem 1 vs 32, drabinka live do finału.
-       • Sterowanie klawiaturą 1 / 2 / Enter we wszystkich fazach.
-       • Naprawiona składnia (Unexpected token) — funkcja el() bez
-         domyślnego parametru przed rest-argumentem.
+     PRZEPŁYW (w tej kolejności, BEZ każdy-z-każdym 440 meczów):
+       1. FAZA 1 — Redukcja 88 → 40: losowe pary (44 pojedynki),
+          odpada 4 zwycięzców z najsłabszym marginesem.
+       2. FAZA 2 — Grupy: 4 grupy po 10, każdy bot gra 4 mecze
+          z losowymi przeciwnikami (~80 meczów). Tabele na żywo.
+       3. FAZA 3 — Playoffy: top 32 globalnie, drabinka do finału.
 
-     UWAGA: podgląd w Claude pokaże błąd/pustkę — to normalne,
-     plik HTML działa dopiero na GitHub Pages (Boty.png z tej samej domeny).
+     >>> Na ekranie startowym i w stopce widać "v4". Jeśli NIE widzisz
+         "v4" w przeglądarce, to znaczy że na Pages leży STARY plik —
+         trzeba nadpisać index.html tą zawartością i odczekać na rebuild.
+
+     UWAGA: podgląd w Claude pokaże błąd/pustkę — to normalne.
      =========================================================== -->
+<style>
 <style>
   :root{
     --bg:#e8f5e2; --primary:#3db858; --light:#7ee890; --sky:#58c8ff;
@@ -70,6 +69,7 @@ const GROUP_COUNT = 4;          // 4 grupy
 const GROUP_SIZE = 10;          // po 10 = 40
 const MATCHES_PER_BOT = 4;      // mecze na bota w grupie
 const ADVANCE = 32;             // finałowa 32
+const VERSION = "v4";
 
 const app = document.getElementById("app");
 let img=null, cellW=0, cellH=0;
@@ -294,7 +294,7 @@ function render(){
 
   if(phase==="calibrate"){
     app.append(el("h1",{},"Kalibracja siatki"));
-    app.append(el("p",{class:"sub"},"Sprawdź, czy różowa siatka trafia w każdego bota, potem Start."));
+    app.append(el("p",{class:"sub"},"Sprawdź, czy różowa siatka trafia w każdego bota, potem Start. ("+VERSION+", przepływ: redukcja → grupy → playoffy)"));
     const p=el("div",{class:"panel"}); const ctrls=el("div",{class:"ctrls"});
     const mk=(lab,val,min,max,set)=>{ const l=el("label",{class:"ctrl"},`${lab}: ${val}`);
       l.append(el("input",{type:"range",min,max,value:val,oninput:e=>{set(+e.target.value);recalcCells();drawCal();l.firstChild.textContent=`${lab}: ${e.target.value}`;}})); return l; };
