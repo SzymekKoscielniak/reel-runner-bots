@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Turniej Botów</title>
 <!-- ===========================================================
-     ✅ WERSJA 6 — STRUKTURA 88 → 40 → 32 (3 mecze na bota w grupie)
+     ✅ WERSJA 7 — STRUKTURA 88 → 40 → 32 (jeszcze większe obrazki)
      index.html dla repo reel-runner-bots (obok Boty.png), GitHub Pages.
 
      PRZEPŁYW (w tej kolejności, BEZ każdy-z-każdym 440 meczów):
@@ -12,12 +12,11 @@
           z losowymi przeciwnikami (~60 meczów). Tabele na żywo.
        3. FAZA 3 — Playoffy: top 32 globalnie, drabinka do finału.
 
-     ZMIANA W v6: liczba meczów na bota w grupie 4 → 3 (~60 meczów).
-     (v5: obrazki w arenie powiększone 3×.)
+     ZMIANA W v7: panel areny poszerzony (820→1100px), obrazki w
+     arenie 360px, dodany maxWidth na canvasie. (v6: 3 mecze/bota.)
 
-     >>> Na ekranie startowym i w stopce widać "v6". Jeśli NIE widzisz
-         "v6" w przeglądarce, to znaczy że na Pages leży STARY plik —
-         trzeba nadpisać index.html tą zawartością i odczekać na rebuild.
+     >>> Na ekranie startowym i w stopce widać "v7". Jeśli NIE widzisz
+         "v7" w przeglądarce, to STARY plik na Pages — nadpisz index.html.
 
      UWAGA: podgląd w Claude pokaże błąd/pustkę — to normalne.
      =========================================================== -->
@@ -31,7 +30,7 @@
   body{margin:0;background:var(--bg);font-family:system-ui,sans-serif;color:var(--text);padding:16px}
   h1{text-align:center;margin:8px 0 2px}
   .sub{text-align:center;color:var(--primary);font-weight:600;margin:0 0 14px}
-  .panel{background:var(--panel);border-radius:18px;padding:20px;max-width:820px;margin:0 auto 16px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+  .panel{background:var(--panel);border-radius:18px;padding:20px;max-width:1100px;margin:0 auto 16px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
   .cellimg{image-rendering:pixelated;border-radius:14px;border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.15)}
   .arena{display:flex;justify-content:space-around;align-items:center;margin-bottom:24px;gap:10px}
   .fighter{display:flex;flex-direction:column;align-items:center;transition:opacity .2s}
@@ -72,7 +71,7 @@ const GROUP_COUNT = 4;          // 4 grupy
 const GROUP_SIZE = 10;          // po 10 = 40
 const MATCHES_PER_BOT = 3;      // mecze na bota w grupie
 const ADVANCE = 32;             // finałowa 32
-const VERSION = "v6";
+const VERSION = "v7";
 
 const app = document.getElementById("app");
 let img=null, cellW=0, cellH=0;
@@ -99,7 +98,7 @@ function recalcCells(){
 function cellXY(i){ const c=i%COLS, r=Math.floor(i/COLS); return {x:PAD+c*(cellW+GAP), y:PAD+r*(cellH+GAP)}; }
 function makeBotCanvas(i,size){
   const cv=document.createElement("canvas"); cv.width=size; cv.height=size; cv.className="cellimg";
-  cv.style.width=size+"px"; cv.style.height=size+"px";
+  cv.style.width=size+"px"; cv.style.height=size+"px"; cv.style.maxWidth="100%";
   const ctx=cv.getContext("2d"); ctx.imageSmoothingEnabled=false;
   const {x,y}=cellXY(i); ctx.drawImage(img,x,y,cellW,cellH,0,0,size,size); return cv;
 }
