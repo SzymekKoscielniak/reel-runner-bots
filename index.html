@@ -1,0 +1,341 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turniej Botów</title>
+<style>
+  :root{
+    --bg:#e8f5e2; --primary:#3db858; --light:#7ee890; --sky:#58c8ff;
+    --gold:#f5c518; --text:#1a6b2e; --panel:#ffffff; --bad:#e8794a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:system-ui,sans-serif;color:var(--text);padding:16px}
+  h1{text-align:center;margin:8px 0 2px}
+  .sub{text-align:center;color:var(--primary);font-weight:600;margin:0 0 14px}
+  .panel{background:var(--panel);border-radius:18px;padding:20px;max-width:820px;margin:0 auto 16px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+  .cellimg{image-rendering:pixelated;border-radius:14px;border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+  .arena{display:flex;justify-content:space-around;align-items:center;margin-bottom:24px;gap:10px}
+  .fighter{display:flex;flex-direction:column;align-items:center;transition:opacity .2s}
+  .fighter .name{margin-top:8px;font-weight:700;font-size:14px}
+  .vs{font-size:26px;font-weight:900;color:var(--gold)}
+  .dim{opacity:.4}
+  input[type=range]{width:100%;accent-color:var(--primary);height:8px}
+  .btn{width:100%;margin-top:18px;padding:14px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-weight:800;font-size:16px;cursor:pointer}
+  .btn.sky{background:var(--sky)}
+  .hint{text-align:center;font-size:12px;margin-top:10px;font-weight:600}
+  .row{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:8px;margin-bottom:4px}
+  .pill{display:flex;align-items:center;gap:6px;padding:4px 7px;border-radius:8px;background:#f3faf0;font-size:11px;font-weight:600;white-space:nowrap}
+  .bracket{display:flex;gap:14px;overflow-x:auto;padding-bottom:10px}
+  .bcol{display:flex;flex-direction:column;gap:10px;min-width:150px;justify-content:space-around}
+  .bmatch{border:2px solid #e0eed8;border-radius:10px;padding:5px;background:#fff;display:flex;flex-direction:column;gap:3px}
+  .bmatch.cur{border-color:var(--gold);background:#fffbe8}
+  .ctrls{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px}
+  label.ctrl{display:flex;flex-direction:column;font-size:12px;font-weight:700;gap:4px}
+  canvas#cal{width:100%;border:2px solid #e0eed8;border-radius:8px;image-rendering:pixelated}
+  .err{color:#c0392b;font-weight:700}
+  .seedgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .seedrow{display:flex;align-items:center;gap:6px;padding:6px;border:2px solid #e0eed8;border-radius:10px}
+  .thumb{image-rendering:pixelated;border-radius:6px;border:2px solid #fff;flex-shrink:0}
+</style>
+
+<div id="app"></div>
+
+<script>
+// ===== KONFIG =====
+const SHEET = "Boty.png";   // plik w tym samym katalogu co index.html
+let COLS=8, ROWS=11, GAP=0, PAD=0;
+const TOTAL = COLS*ROWS;      // 88
+const NUM_GROUPS = 8;
+const ADVANCE = 32;
+
+const app = document.getElementById("app");
+let img=null, cellW=0, cellH=0;
+
+// stan turnieju
+let chars=[], groups=[], groupMatches=[], gIdx=0, slider=50, points={};
+let phase="loading"; // loading | calibrate | group | draw | playoff | done
+let seeded=[], bracket=[], poR=0, poM=0, champ=null;
+
+// ===== ŁADOWANIE ARKUSZA =====
+img = new Image();
+img.onload = () => { phase="calibrate"; recalcCells(); render(); };
+img.onerror = () => { phase="error"; render(); };
+img.src = SHEET;
+
+function recalcCells(){
+  cellW = (img.naturalWidth  - 2*PAD - (COLS-1)*GAP)/COLS;
+  cellH = (img.naturalHeight - 2*PAD - (ROWS-1)*GAP)/ROWS;
+}
+function cellXY(i){
+  const c=i%COLS, r=Math.floor(i/COLS);
+  return { x: PAD + c*(cellW+GAP), y: PAD + r*(cellH+GAP) };
+}
+
+// rysuje pojedynczego bota do <canvas> o zadanym rozmiarze
+function makeBotCanvas(i, size){
+  const cv=document.createElement("canvas");
+  cv.width=size; cv.height=size;
+  cv.className="cellimg";
+  cv.style.width=size+"px"; cv.style.height=size+"px";
+  const ctx=cv.getContext("2d");
+  ctx.imageSmoothingEnabled=false;
+  const {x,y}=cellXY(i);
+  ctx.drawImage(img, x,y,cellW,cellH, 0,0,size,size);
+  return cv;
+}
+function botThumb(i,size){ const cv=makeBotCanvas(i,size); cv.className="thumb"; cv.style.width=size+"px"; cv.style.height=size+"px"; return cv; }
+
+// ===== SETUP TURNIEJU =====
+function initTournament(){
+  chars = Array.from({length:TOTAL},(_,i)=>({id:i, name:"Bot "+(i+1)}));
+  groups = Array.from({length:NUM_GROUPS},()=>[]);
+  chars.forEach((c,i)=>groups[i%NUM_GROUPS].push(c));
+  groupMatches=[];
+  groups.forEach((g,gi)=>{
+    for(let a=0;a<g.length;a++) for(let b=a+1;b<g.length;b++)
+      groupMatches.push({gi, a:g[a], b:g[b]});
+  });
+  points={}; chars.forEach(c=>points[c.id]=0);
+  gIdx=0; slider=50;
+}
+
+function advancingSet(){
+  const ranked=[...chars].sort((a,b)=>points[b.id]-points[a.id]);
+  return new Set(ranked.slice(0,ADVANCE).map(c=>c.id));
+}
+
+function submitGroup(){
+  const m=groupMatches[gIdx];
+  points[m.a.id]+=(100-slider)/100;
+  points[m.b.id]+=slider/100;
+  slider=50;
+  if(gIdx+1<groupMatches.length){ gIdx++; render(); }
+  else { prepareDraw(); }
+}
+function prepareDraw(){
+  const ranked=[...chars].sort((a,b)=>points[b.id]-points[a.id]);
+  seeded=ranked.slice(0,ADVANCE);
+  phase="draw"; render();
+}
+function startPlayoffs(){
+  const r1=[];
+  for(let i=0;i<seeded.length/2;i++) r1.push([seeded[i],seeded[seeded.length-1-i]]);
+  bracket=[r1]; poR=0; poM=0; slider=50; phase="playoff"; render();
+}
+function submitPlayoff(){
+  const round=bracket[poR]; const [a,b]=round[poM];
+  const w = slider<=50?a:b;
+  round[poM]=[a,b,w.id];
+  if(poM+1<round.length){ poM++; slider=50; render(); }
+  else{
+    const winners=round.map(([x,y,wid])=> wid===x.id?x:y);
+    if(winners.length===1){ champ=winners[0]; phase="done"; render(); }
+    else{
+      const next=[]; for(let i=0;i<winners.length;i+=2) next.push([winners[i],winners[i+1]]);
+      bracket.push(next); poR++; poM=0; slider=50; render();
+    }
+  }
+}
+function resetAll(){ initTournament(); phase="group"; render(); }
+
+const roundName = n => n===16?"1/16":n===8?"1/8":n===4?"Ćwierćfinał":n===2?"Półfinał":n===1?"FINAŁ":"Runda ("+n+")";
+
+// ===== KLAWIATURA =====
+document.addEventListener("keydown",e=>{
+  if(phase==="group"){
+    if(e.key==="1") {slider=0; render();}
+    else if(e.key==="2"){slider=100; render();}
+    else if(e.key==="Enter") submitGroup();
+  } else if(phase==="playoff"){
+    if(e.key==="1"){slider=0; render();}
+    else if(e.key==="2"){slider=100; render();}
+    else if(e.key==="Enter") submitPlayoff();
+  }
+});
+
+// ===== RENDER =====
+function el(tag,props={},...kids){
+  const e=document.createElement(tag);
+  for(const k in props){
+    if(k==="style") e.style.cssText=props[k];
+    else if(k.startsWith("on")) e[k.toLowerCase()]=props[k];
+    else if(k==="class") e.className=props[k];
+    else e.setAttribute(k,props[k]);
+  }
+  kids.flat().forEach(c=>{ if(c==null) return; e.append(c.nodeType?c:document.createTextNode(c)); });
+  return e;
+}
+
+function fighterEl(char, size, dim){
+  const w=el("div",{class:"fighter"+(dim?" dim":"")});
+  w.append(makeBotCanvas(char.id,size));
+  w.append(el("div",{class:"name"},char.name));
+  return w;
+}
+function pill(char, opts={}){
+  const p=el("div",{class:"pill",style:`${opts.cur?"background:var(--light);border:2px solid var(--primary);":""}${opts.loser?"opacity:.4;":""}${opts.winner?"font-weight:800;":""}`});
+  p.append(botThumb(char.id,18));
+  p.append(char.name);
+  return p;
+}
+
+function arena(a,b,label,submitFn){
+  const p=el("div",{class:"panel"});
+  p.append(el("div",{style:"text-align:center;font-weight:600;margin-bottom:14px"},label));
+  const ar=el("div",{class:"arena"});
+  ar.append(fighterEl(a,120,slider>50));
+  ar.append(el("div",{class:"vs"},"VS"));
+  ar.append(fighterEl(b,120,slider<50));
+  p.append(ar);
+  const sl=el("input",{type:"range",min:0,max:100,value:slider,oninput:e=>{slider=+e.target.value; updateLive();}});
+  p.append(sl);
+  const lab=el("div",{id:"slabel",style:"display:flex;justify-content:space-between;font-size:13px;margin-top:6px;font-weight:600"},
+    el("span",{},`← ${a.name} (${100-slider}%)`), el("span",{},`${b.name} (${slider}%) →`));
+  p.append(lab);
+  p.append(el("button",{class:"btn",onClick:submitFn},"Zatwierdź →"));
+  return p;
+}
+// lekka aktualizacja podświetleń przy ruchu suwaka bez pełnego re-renderu
+function updateLive(){
+  const ar=document.querySelector(".arena");
+  if(ar){ const f=ar.querySelectorAll(".fighter");
+    f[0].classList.toggle("dim",slider>50); f[1].classList.toggle("dim",slider<50); }
+}
+
+function groupTable(gi){
+  const p=el("div",{class:"panel",style:"padding:18px"});
+  p.append(el("div",{style:"display:flex;justify-content:space-between;margin-bottom:10px"},
+    el("div",{style:"font-weight:800"},"Tabela — Grupa "+String.fromCharCode(65+gi)),
+    el("div",{style:"font-size:11px;color:var(--primary);font-weight:600"},"awans = top "+ADVANCE)));
+  const adv=advancingSet();
+  [...groups[gi]].sort((a,b)=>points[b.id]-points[a.id]).forEach((c,i)=>{
+    const ok=adv.has(c.id);
+    const r=el("div",{class:"row",style:`background:${ok?"#e9f9ec":"#faf0f0"};border-left:5px solid ${ok?"var(--primary)":"var(--bad)"}`});
+    const left=el("div",{style:"display:flex;align-items:center;gap:8px"},
+      el("span",{style:"width:20px;text-align:right;color:var(--primary);font-weight:800"},(i+1)+"."),
+      botThumb(c.id,20), el("span",{style:"font-weight:600"},c.name));
+    const right=el("div",{style:"display:flex;align-items:center;gap:10px"},
+      el("span",{style:`font-size:11px;font-weight:800;color:${ok?"var(--primary)":"var(--bad)"}`}, ok?"✓ awans":"✗ odpada"),
+      el("span",{style:"font-weight:800;color:var(--gold);min-width:54px;text-align:right"},points[c.id].toFixed(1)+" pkt"));
+    r.append(left,right); p.append(r);
+  });
+  return p;
+}
+
+function bracketView(){
+  const wrap=el("div",{class:"bracket"});
+  bracket.forEach((round,ri)=>{
+    const col=el("div",{class:"bcol"});
+    col.append(el("div",{style:"text-align:center;font-weight:800;color:var(--primary);font-size:13px"},roundName(round.length)));
+    round.forEach((pair,mi)=>{
+      const [a,b,wid]=pair;
+      const cur = ri===poR && mi===poM && phase==="playoff";
+      const m=el("div",{class:"bmatch"+(cur?" cur":"")});
+      m.append(pill(a,{winner:wid===a.id,loser:wid!=null&&wid!==a.id,cur}));
+      m.append(pill(b,{winner:wid===b.id,loser:wid!=null&&wid!==b.id,cur}));
+      col.append(m);
+    });
+    wrap.append(col);
+  });
+  return wrap;
+}
+
+function render(){
+  app.innerHTML="";
+  if(phase==="loading"){ app.append(el("div",{class:"panel"},"Ładuję arkusz…")); return; }
+  if(phase==="error"){
+    app.append(el("h1",{},"Błąd"));
+    app.append(el("div",{class:"panel err"},
+      `Nie udało się załadować "${SHEET}". Upewnij się, że plik leży w tym samym katalogu co index.html w repo, i że otwierasz stronę przez GitHub Pages (nie lokalnie z dysku).`));
+    return;
+  }
+
+  if(phase==="calibrate"){
+    app.append(el("h1",{},"Kalibracja siatki"));
+    app.append(el("p",{class:"sub"},"Sprawdź, czy różowa siatka trafia w każdego bota, potem kliknij Start."));
+    const p=el("div",{class:"panel"});
+    const ctrls=el("div",{class:"ctrls"});
+    const mk=(lab,val,min,max,set)=>{
+      const l=el("label",{class:"ctrl"}, `${lab}: ${val}`);
+      const inp=el("input",{type:"range",min,max,value:val,oninput:e=>{set(+e.target.value); recalcCells(); drawCal(); l.firstChild.textContent=`${lab}: ${e.target.value}`;}});
+      l.append(inp); return l;
+    };
+    ctrls.append(mk("Kolumny",COLS,1,16,v=>COLS=v));
+    ctrls.append(mk("Wiersze",ROWS,1,16,v=>ROWS=v));
+    ctrls.append(mk("Odstęp",GAP,0,60,v=>GAP=v));
+    ctrls.append(mk("Margines",PAD,0,60,v=>PAD=v));
+    p.append(ctrls);
+    p.append(el("div",{id:"caldim",style:"font-size:13px;font-weight:600;margin-bottom:10px"}));
+    p.append(el("canvas",{id:"cal"}));
+    p.append(el("button",{class:"btn sky",onClick:()=>{ initTournament(); phase="group"; render(); }},"Siatka OK — Start turnieju →"));
+    app.append(p);
+    drawCal();
+    return;
+  }
+
+  if(phase==="group"){
+    const m=groupMatches[gIdx];
+    app.append(el("h1",{},"Faza grupowa"));
+    app.append(el("p",{class:"sub"},`Grupa ${String.fromCharCode(65+m.gi)} • Mecz ${gIdx+1} / ${groupMatches.length}`));
+    app.append(arena(m.a,m.b,"Wybierz zwycięzcę (suwak = remis na środku)",submitGroup));
+    app.append(el("div",{class:"hint"},`⌨️ 1 = ${m.a.name} • 2 = ${m.b.name} • Enter = zatwierdź`));
+    app.append(groupTable(m.gi));
+    return;
+  }
+
+  if(phase==="draw"){
+    app.append(el("h1",{},"🎲 Losowanie"));
+    app.append(el("p",{class:"sub"},`Awansowało ${ADVANCE}. Rozstawienie 1 vs ${ADVANCE}, 2 vs ${ADVANCE-1}…`));
+    const p=el("div",{class:"panel"});
+    const grid=el("div",{class:"seedgrid"});
+    for(let i=0;i<seeded.length/2;i++){
+      const a=seeded[i], b=seeded[seeded.length-1-i];
+      const row=el("div",{class:"seedrow"},
+        el("span",{style:"color:var(--primary);font-weight:800;font-size:11px;width:16px"},i+1),
+        pill(a), el("span",{style:"color:var(--gold);font-weight:800;font-size:11px"},"vs"), pill(b));
+      grid.append(row);
+    }
+    p.append(grid);
+    p.append(el("button",{class:"btn sky",onClick:startPlayoffs},"Rozpocznij playoffy →"));
+    app.append(p);
+    return;
+  }
+
+  if(phase==="playoff"){
+    const round=bracket[poR]; const [a,b]=round[poM];
+    app.append(el("h1",{},"Playoffy"));
+    app.append(el("p",{class:"sub"},`${roundName(round.length)} • Pojedynek ${poM+1} / ${round.length}`));
+    app.append(arena(a,b,"Wybierz, kto awansuje",submitPlayoff));
+    app.append(el("div",{class:"hint"},`⌨️ 1 = ${a.name} • 2 = ${b.name} • Enter = zatwierdź`));
+    const bp=el("div",{class:"panel"});
+    bp.append(el("div",{style:"font-weight:800;margin-bottom:12px"},"Drabinka"));
+    bp.append(bracketView());
+    app.append(bp);
+    return;
+  }
+
+  if(phase==="done"){
+    app.append(el("h1",{},"🏆 Zwycięzca 🏆"));
+    const p=el("div",{class:"panel",style:"text-align:center"});
+    p.append(fighterEl(champ,160,false));
+    p.append(el("button",{class:"btn sky",style:"max-width:240px;margin:20px auto 0",onClick:resetAll},"Zagraj ponownie"));
+    app.append(p);
+    return;
+  }
+}
+
+function drawCal(){
+  const cv=document.getElementById("cal"); if(!cv) return;
+  const maxW=780, scale=Math.min(1,maxW/img.naturalWidth);
+  cv.width=img.naturalWidth*scale; cv.height=img.naturalHeight*scale;
+  const ctx=cv.getContext("2d"); ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(img,0,0,cv.width,cv.height);
+  ctx.strokeStyle="#ff2d7a"; ctx.lineWidth=1.5; ctx.fillStyle="#ff2d7a"; ctx.font="bold 12px sans-serif";
+  for(let i=0;i<COLS*ROWS;i++){ const {x,y}=cellXY(i);
+    ctx.strokeRect(x*scale,y*scale,cellW*scale,cellH*scale);
+    ctx.fillText(i+1,x*scale+3,y*scale+13);
+  }
+  const d=document.getElementById("caldim");
+  if(d) d.textContent=`Plik: ${img.naturalWidth}×${img.naturalHeight}px • komórek: ${COLS*ROWS} • komórka ≈ ${Math.round(cellW)}×${Math.round(cellH)}px`;
+}
+
+render();
+</script>
